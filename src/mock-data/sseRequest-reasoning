@@ -1,0 +1,112 @@
+export class MockSSEResponse {
+  constructor(data, delay = 300, error = false) {
+    // 确保数据是有效的对象
+    try {
+      if (typeof data === 'string') {
+        this.originalData = JSON.parse(data);
+      } else {
+        this.originalData = data;
+      }
+    } catch (e) {
+      this.originalData = { reasoning: String(data), content: String(data) };
+    }
+    
+    // 准备流式数据
+    this.reasoningData = this.originalData.reasoning || '';
+    this.contentData = this.originalData.content || '';
+    this.currentReasoningIndex = 0;
+    this.currentContentIndex = 0;
+    this.isReasoningComplete = false;
+    
+    this.delay = delay;
+    this.error = error;
+    this.encoder = new TextEncoder();
+    this.controller = null;
+
+    this.stream = new ReadableStream({
+      start: (controller) => {
+        this.controller = controller;
+        if (!this.error) {
+          setTimeout(() => this.pushData(), this.delay);
+        }
+      },
+      cancel() {},
+    });
+  }
+
+  pushData() {
+    if (!this.controller) {
+      return;
+    }
+
+    try {
+      let chunk = '';
+      let hasData = false;
+
+      // 先推送 reasoning 数据
+      if (!this.isReasoningComplete && this.currentReasoningIndex < this.reasoningData.length) {
+        const reasoningChunk = this.reasoningData.slice(this.currentReasoningIndex, this.currentReasoningIndex + 1);
+        this.currentReasoningIndex++;
+        
+        const deltaData = {
+          delta: {
+            reasoning_content: reasoningChunk,
+            content: ''
+          }
+        };
+        
+        chunk = JSON.stringify(deltaData);
+        hasData = true;
+
+        if (this.currentReasoningIndex >= this.reasoningData.length) {
+          this.isReasoningComplete = true;
+        }
+      }
+      // 再推送 content 数据
+      else if (this.currentContentIndex < this.contentData.length) {
+        const contentChunk = this.contentData.slice(this.currentContentIndex, this.currentContentIndex + 1);
+        this.currentContentIndex++;
+        
+        const deltaData = {
+          delta: {
+            reasoning_content: '',
+            content: contentChunk
+          }
+        };
+        
+        chunk = JSON.stringify(deltaData);
+        hasData = true;
+      }
+
+      if (hasData) {
+        this.controller.enqueue(this.encoder.encode(chunk + '\n'));
+        setTimeout(() => this.pushData(), this.delay);
+      } else {
+        // 数据发送完毕，关闭流
+        setTimeout(() => {
+          if (this.controller) {
+            this.controller.close();
+          }
+        }, this.delay);
+      }
+    } catch (error) {
+      console.error('Error in pushData:', error);
+      if (this.controller) {
+        this.controller.close();
+      }
+    }
+  }
+
+  getResponse() {
+    return new Promise((resolve) => {
+      setTimeout(() => {
+        if (this.error) {
+          const errorResponseOptions = { status: 500, statusText: 'Internal Server Error' };
+          resolve(new Response(null, errorResponseOptions));
+        } else {
+          resolve(new Response(this.stream));
+        }
+      }, this.delay);
+    });
+  }
+}
