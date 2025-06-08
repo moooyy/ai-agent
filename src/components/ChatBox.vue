@@ -9,6 +9,7 @@
       ></t-chat-item> -->
       <t-chat
         ref="chatRef"
+        v-if="props.conversation_id"
         :clear-history="currentChat?.chatList?.length > 0 && !props.loading"
         :data="chatListFormat || []"
         :is-stream-load="props.isStreamLoad"
@@ -53,6 +54,10 @@
   import { MessagePlugin} from 'tdesign-vue-next';
   import dayjs from 'dayjs';
   const props = defineProps({
+    conversation_id: {
+      type: String,
+      default: ''
+    },
     currentChat: {
       type: Object,
       default: () => ({

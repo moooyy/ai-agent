@@ -1,15 +1,14 @@
 <template>
-  <div class="chat-app" :class="{ collapsed: isMobile && !showSidebar }">
+  <div class="chat-app" :class="{ collapsed: !showSidebar, isMobile: isMobile }">
     <!-- 左侧历史对话列表 -->
     <aside class="sidebar">
       <t-button
-        v-if="isMobile"
         class="toggle-sidebar"
         variant="text"
-        @click="showSidebar = false"
-        style="margin: 12px 12px 0 12px;"
+        @click="toggleSidebar"
       >
-        <MenuIcon />
+        <ChevronLeftIcon v-if="showSidebar" />
+        <ChevronRightIcon v-else />
       </t-button>
       <ChatHistory
         :history-list="historyList"
@@ -24,6 +23,7 @@
       <!-- {{ aiModel }} -->
         <!-- {{ currentChat }} -->
       <ChatBox 
+        :conversation_id="conversation_id"
         :currentChat="currentChat"
         :aicontent="aicontent"
         :loading="loading"
@@ -39,7 +39,8 @@
 import { ref, computed, onMounted, onUnmounted } from 'vue';
 
 import { 
-  MenuIcon 
+  ChevronLeftIcon,
+  ChevronRightIcon
 } from 'tdesign-icons-vue-next';
 import ChatHistory from './ChatHistory.vue';
 import ChatBox from './ChatBox.vue';
@@ -106,12 +107,12 @@ async function selectChat(index, id) {
 
 // 历史对话数据
 const historyList = ref([
-  {
-    conversation_id: '1',
-    created_at: +new Date(),
-    text: '加载中...',
-    chatList: []
-  }
+  // {
+  //   conversation_id: '1',
+  //   created_at: +new Date(),
+  //   text: '加载中...',
+  //   chatList: []
+  // }
 ]);
 
 async function sendMessage(prompt) {
@@ -264,6 +265,10 @@ function stopMessage() {
   isStreamLoad.value = false;
 }
 
+function toggleSidebar() {
+  showSidebar.value = !showSidebar.value;
+}
+
 onMounted(async () => {
   checkMobile();
   window.addEventListener('resize', checkMobile);
@@ -299,7 +304,14 @@ onUnmounted(() => {
   width: 100%;
   font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif;
 }
-
+.isMobile{
+  .sidebar{
+    background-color: #ffffffee;
+  }
+  .chat-main{
+    padding: 20px 20px 0 15px;
+  }
+}
 .sidebar {
   width: 220px;
   background: #ffffff88;
@@ -309,19 +321,53 @@ onUnmounted(() => {
   flex-direction: column;
   z-index: 100;
   height: 100vh;
+  transition: transform 0.3s ease;
 }
-.chat-main{
-  padding: 0 20px 0 240px;
-  min-width: 375px;
-  flex: 1;
-}
-.collapsed {
-  .sidebar{
-    display: none;
+
+.toggle-sidebar {
+  position: absolute;
+  right: -20px;
+  top: 50%;
+  transform: translateY(-50%);
+  width: 20px;
+  height: 40px;
+  padding: 0;
+  background: #ffffff;
+  border: 1px solid #e7e8e9;
+  border-left: none;
+  border-radius: 0 4px 4px 0;
+  z-index: 101;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+  box-shadow: 2px 0 4px rgba(0, 0, 0, 0.05);
+  &:hover {
+    background: #f5f5f5;
   }
-  .chat-main{
-    padding: 0 20px;
+  :deep(.t-button__icon) {
+    font-size: 14px;
+    color: #666;
   }
 }
 
+.chat-main{
+  padding: 10px 20px 0 240px;
+  min-width: 375px;
+  flex: 1;
+  transition: padding 0.3s ease;
+}
+
+.collapsed {
+  .sidebar{
+    transform: translateX(-100%);
+  }
+  .chat-main{
+    padding: 20px 20px 0 15px;
+  }
+  :deep(.t-chat__footer){
+    left: 20px;
+    right: 20px;
+  }
+}
 </style> 
