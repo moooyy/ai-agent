@@ -71,6 +71,10 @@
     isStreamLoad: {
       type: Boolean,
       default: true
+    },
+    assistantAvatar: {
+      type: String,
+      default: ''
     }
   });
   const query = ref('');
@@ -82,7 +86,7 @@
     props.currentChat.chatList.forEach(item => {
       if(item.user){
         chatList.push({
-          avatar: 'https://tdesign.gtimg.com/site/avatar.jpg',
+          avatar: '/images/avatar.png',
           content: item.user || '',
           role: 'user',
           datetime: dayjs(item.timestamp).format('YY-MM-DD HH:mm:ss') || dayjs().format('YY-MM-DD HH:mm:ss')
@@ -90,7 +94,7 @@
       }
       // if(item.assistant || item.reasoning?.length > 0){
         chatList.push({
-          avatar: 'http://223.113.240.17:30095/images/moooyy/moooyy.png',
+          avatar: props.assistantAvatar,
           content: item.assistant || '',
           role: 'assistant',
           datetime: dayjs(item.timestamp).format('YY-MM-DD HH:mm:ss') || dayjs().format('YY-MM-DD HH:mm:ss'),

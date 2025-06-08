@@ -13,8 +13,8 @@ const routes = [
     component: Home
   },
   {
-    path: '/chat',
-    name: 'Chat',
+    path: '/app/:app_key',
+    name: 'App',
     component: ChatApp
   }
 ]

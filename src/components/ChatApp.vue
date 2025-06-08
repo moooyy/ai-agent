@@ -1,15 +1,22 @@
 <template>
   <div class="chat-app" :class="{ collapsed: !showSidebar, isMobile: isMobile }">
+    <!-- 收起时左上角浮动按钮，带渐显动画 -->
+    <transition name="fade">
+      <button size="s" v-if="!showSidebar" class="sidebar-float-action" @click="toggleSidebar">
+        <ChevronRightIcon />
+      </button>
+    </transition>
     <!-- 左侧历史对话列表 -->
     <aside class="sidebar">
-      <t-button
-        class="toggle-sidebar"
-        variant="text"
-        @click="toggleSidebar"
-      >
-        <ChevronLeftIcon v-if="showSidebar" />
-        <ChevronRightIcon v-else />
-      </t-button>
+      <div class="assistant-info">
+        <div class="assistant-logo">
+          <img :src="assistant.avatar_pic" alt="avatar" class="avatar-img" />
+        </div>
+        <div class="assistant-name">{{ assistant.name }}</div>
+        <button v-if="showSidebar" class="assistant-action" @click="toggleSidebar">
+          <ChevronLeftIcon />
+        </button>
+      </div>
       <ChatHistory
         :history-list="historyList"
         :current-chat-index="currentChatIndex"
@@ -20,8 +27,7 @@
 
     <!-- 右侧聊天主界面 -->
     <main class="chat-main">
-      <!-- {{ aiModel }} -->
-        <!-- {{ currentChat }} -->
+      
       <ChatBox 
         :conversation_id="conversation_id"
         :currentChat="currentChat"
@@ -30,6 +36,7 @@
         :isStreamLoad="isStreamLoad"
         @send="sendMessage" 
         @stop="stopMessage"
+        :assistantAvatar="assistant.avatar_pic"
       />
     </main>
   </div>
@@ -40,11 +47,12 @@ import { ref, computed, onMounted, onUnmounted } from 'vue';
 
 import { 
   ChevronLeftIcon,
-  ChevronRightIcon
+  ChevronRightIcon,
+  PauseIcon
 } from 'tdesign-icons-vue-next';
 import ChatHistory from './ChatHistory.vue';
 import ChatBox from './ChatBox.vue';
-import { getUserAiConfig, getHistoryChat, getSessionList, createSession, chatSSE } from '../api/io';
+import { getAssistantInfo, getUserAiConfig, getHistoryChat, getSessionList, createSession, chatSSE } from '../api/io';
 // 响应式处理
 const isMobile = ref(false);
 const showSidebar = ref(true);
@@ -52,6 +60,8 @@ const user_cancel = ref(false);
 
 // AI模型信息
 const aiModel = ref(null);
+const app_key = getAppName(window.location)
+const assistant = ref({avatar_pic: '/images/avatar.png'});
 
 function checkMobile() {
   isMobile.value = window.innerWidth <= 768;
@@ -69,6 +79,23 @@ function getClientToken() {
     localStorage.setItem('client_token', token);
   }
   return token;
+}
+// 获取app_key: url最后一截path
+function getAppName(urlString, decode = true) {
+  try {
+      const url = new URL(urlString);
+      const path = url.pathname;
+      const regex = /\/app\/([^/]+)(?:\/|$)/;
+      const match = path.match(regex);
+      
+      if (!match) return '';
+      
+      // 返回原始值或解码后的值
+      return decode ? decodeURIComponent(match[1]) : match[1];
+  } catch (error) {
+      console.error('URL 解析失败:', error);
+      return '';
+  }
 }
 
 // 当前对话索引
@@ -275,6 +302,8 @@ onMounted(async () => {
   // 获取AI模型信息
   try {
     aiModel.value = await getUserAiConfig();
+    assistant.value = await getAssistantInfo();
+    assistant.value.avatar_pic = `/images/${app_key}/${assistant.value.icon}`;
     const sessions = await getSessionList();
     if (sessions && sessions.length > 0) {
       historyList.value = sessions;
@@ -324,30 +353,60 @@ onUnmounted(() => {
   transition: transform 0.3s ease;
 }
 
-.toggle-sidebar {
-  position: absolute;
-  right: -20px;
-  top: 50%;
-  transform: translateY(-50%);
-  width: 20px;
-  height: 40px;
-  padding: 0;
-  background: #ffffff;
-  border: 1px solid #e7e8e9;
-  border-left: none;
-  border-radius: 0 4px 4px 0;
-  z-index: 101;
+.assistant-info {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 8px 16px 8px 20px;
+  background: #fff;
+  border-radius: 8px;
+  margin-bottom: 12px;
+}
+.assistant-logo {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  margin-right: 12px;
+  .avatar-img {
+    width: 36px;
+    height: 36px;
+    border-radius: 8px;
+    background: #f5f6fa;
+    object-fit: cover;
+  }
+  .assistant-brand {
+    font-size: 12px;
+    color: #219653;
+    font-weight: bold;
+    margin-top: 2px;
+    letter-spacing: 1px;
+  }
+}
+.assistant-name {
+  font-size: 17px;
+  font-weight: 600;
+  color: #222;
+  flex: 1;
+  text-align: left;
+}
+.assistant-action {
+  width: 30px;
+  height: 30px;
+  border-radius: 50%;
+  border: 1px solid #e0e0e0;
+  background: #fff;
   display: flex;
   align-items: center;
   justify-content: center;
   cursor: pointer;
-  box-shadow: 2px 0 4px rgba(0, 0, 0, 0.05);
+  transition: background 0.2s;
+  margin-left: 12px;
   &:hover {
-    background: #f5f5f5;
+    background: #f5f6fa;
   }
-  :deep(.t-button__icon) {
-    font-size: 14px;
-    color: #666;
+  svg {
+    font-size: 20px;
+    color: #888;
   }
 }
 
@@ -369,5 +428,40 @@ onUnmounted(() => {
     left: 20px;
     right: 20px;
   }
+}
+
+.sidebar-float-action {
+  position: fixed;
+  top: 15px;
+  left: 8px;
+  z-index: 200;
+  width: 30px;
+  height: 30px;
+  border-radius: 50%;
+  border: 1px solid #e0e0e0;
+  background: #fff;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+  box-shadow: 0 2px 8px 0 rgba(0,0,0,0.08);
+  transition: background 0.2s;
+  &:hover {
+    background: #f5f6fa;
+  }
+  svg {
+    font-size: 20px;
+    color: #888;
+  }
+}
+
+.fade-enter-active, .fade-leave-active {
+  transition: opacity 0.3s cubic-bezier(.4,0,.2,1);
+}
+.fade-enter-from, .fade-leave-to {
+  opacity: 0;
+}
+.fade-enter-to, .fade-leave-from {
+  opacity: 1;
 }
 </style> 

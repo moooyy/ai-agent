@@ -47,6 +47,15 @@ export function request(config) {
     });
 }
 
+// 获取助手信息
+export function getAssistantInfo() {
+  return request({
+    url: '/assistant/get',
+    method: 'post',
+    data: { app_key: app_key },
+  });
+}
+
 // 获取用户AI配置
 export function getUserAiConfig() {
   return request({
